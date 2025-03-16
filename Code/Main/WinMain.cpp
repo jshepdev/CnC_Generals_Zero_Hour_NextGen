@@ -66,6 +66,7 @@
 //#include "GeneratedVersion.h"
 #include "Resource.h"
 
+#include "../GameEngine/Source/Console/Console.h"
 #include "../gamerenderer/imgui/imgui.h"
 #include "../gamerenderer/imgui/imgui_impl_win32.h"
 #include "../gamerenderer/imgui/imgui_impl_dx9.h"
@@ -80,7 +81,6 @@
 HINSTANCE ApplicationHInstance = NULL;  ///< our application instance
 HWND ApplicationHWnd = NULL;  ///< our application window handle
 Bool ApplicationIsWindowed = true;
-Bool IsConsoleActive = false;
 Win32Mouse *TheWin32Mouse= NULL;  ///< for the WndProc() only
 DWORD TheMessageTime = 0;	///< For getting the time that a message was posted from Windows.
 
@@ -502,7 +502,7 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message,
 				switch( key )
 				{
 					case 192:
-						IsConsoleActive = !IsConsoleActive;
+						DevConsole.IsConsoleActive = !DevConsole.IsConsoleActive;
 						break;
 
 					//---------------------------------------------------------------------
@@ -921,23 +921,6 @@ int __stdcall WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmd
 			if (stricmp(token,"-win")==0)
 				ApplicationIsWindowed=true;
 			token = nextParam(NULL, "\" ");	   
-		}
-
-		if (argc>2 && strcmp(argv[1],"-DX")==0) {  
-			Int i;
-			DEBUG_LOG(("\n--- DX STACK DUMP\n"));
-			for (i=2; i<argc; i++) {
-				Int pc;
-				pc = 0;
-				sscanf(argv[i], "%x",  &pc);
-				char name[_MAX_PATH], file[_MAX_PATH];
-				unsigned int line;
-				unsigned int addr;
-				GetFunctionDetails((void*)pc, name, file, &line, &addr);
-				DEBUG_LOG(("0x%x - %s, %s, line %d address 0x%x\n", pc, name, file, line, addr));
-			}
-			DEBUG_LOG(("\n--- END OF DX STACK DUMP\n"));
-			return 0;
 		}
 
 		#ifdef _DEBUG
