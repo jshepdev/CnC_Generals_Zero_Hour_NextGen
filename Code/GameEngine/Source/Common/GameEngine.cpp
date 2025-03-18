@@ -117,6 +117,8 @@
 //#pragma MESSAGE("************************************** WARNING, optimization disabled for debugging purposes")
 #endif
 
+wwCVar com_clientMaxMs("com_clientMaxMs", "16", "Max default client FPS", CVAR_INT);
+
 //-------------------------------------------------------------------------------------------------
 
 #ifdef DEBUG_CRC
@@ -176,6 +178,12 @@ extern CComModule _Module;
 
 //-------------------------------------------------------------------------------------------------
 static void updateTGAtoDDS();
+
+void StartServerCpuFrameTimer();
+void EndServerCpuFrameTimer();
+
+void StartClientCpuFrameTimer();
+void EndClientCpuFrameTimer();
 
 Int GameEngine::getFramesPerSecondLimit( void )
 {
@@ -575,7 +583,10 @@ void GameEngine::update( void )
 //	m_maxFPS = 60;
 	extern INT TheW3DFrameLengthInMsec;
 	DWORD limit = (1000.0f / m_maxFPS) - 1;
-	DWORD clientlimit = 16;	
+	DWORD clientlimit = com_clientMaxMs.GetInt();
+
+	if (limit < clientlimit)
+		clientlimit = limit;
 
 	// Lock to slower framerate for cinematics. 
 	//bool inCinematic = limit > 33;
@@ -586,7 +597,7 @@ void GameEngine::update( void )
 		static auto lastTimeServer = std::chrono::high_resolution_clock::now();
 		static auto lastTimeClient = std::chrono::high_resolution_clock::now();
 
-		// Grab the current time
+		// Grab the current time		
 		auto now = std::chrono::high_resolution_clock::now();
 
 		// Compute how many milliseconds have elapsed since last call
@@ -603,10 +614,15 @@ void GameEngine::update( void )
 
 				if (elapsedMsClient >= clientlimit)
 				{
-					static auto lastTimeClientActual = std::chrono::high_resolution_clock::now();
-					float clientDeltaTime = std::chrono::duration<float>(now - lastTimeClientActual).count();
+					StartClientCpuFrameTimer();					
+
+					// Get the elapsed duration in milliseconds as a float:
+					float elapsedMs = std::chrono::duration<float, std::milli>(now - lastTimeClient).count();
+
+					// Convert ms → seconds:
+					float clientDeltaTime = elapsedMs / 1000.0f; 
+
 					WW3D::Set_DeltaTime(clientDeltaTime * 30);
-					lastTimeClientActual = now;
 					lastTimeClient = now;
 					TheGameClient->setFrame(m_clientFrame);
 					m_clientFrame++;
@@ -614,16 +630,18 @@ void GameEngine::update( void )
 					TheGameClient->UPDATE();
 
 					TheMessageStream->propagateMessages();
-				}
-				
-				if (elapsedMsServer >= limit)
-				{
+
 					// update the shell
 					TheShell->UPDATE();
 
 					// update the in game UI 
 					TheInGameUI->UPDATE();
 
+					EndClientCpuFrameTimer();
+				}
+				
+				if (elapsedMsServer >= limit)
+				{
 					if (TheNetwork != NULL)
 					{
 						TheNetwork->UPDATE();
@@ -639,7 +657,9 @@ void GameEngine::update( void )
 			{
 				if (elapsedMsServer >= limit)
 				{
+					StartServerCpuFrameTimer();
 					TheGameLogic->UPDATE();
+					EndServerCpuFrameTimer();
 				}
 			}
 
@@ -658,6 +678,10 @@ void GameEngine::update( void )
 // Horrible reference, but we really, really need to know if we are windowed.
 extern bool DX8Wrapper_IsWindowed;
 extern HWND ApplicationHWnd;
+
+bool AllowMouseClip() {
+	return !DX8Wrapper_IsWindowed && !DevConsole.IsConsoleActive;
+}
 
 /** -----------------------------------------------------------------------------------------------
  * The "main loop" of the game engine. It will not return until the game exits. 
