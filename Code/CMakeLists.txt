@@ -8,6 +8,13 @@ set(CMAKE_CONFIGURATION_TYPES "Debug;Internal;Release" CACHE STRING "Configs" FO
 # SETUP
 ################################################################################
 
+
+set(GNG_GLOBAL_PROPERTIES
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED ON
+    CXX_EXTENSIONS OFF
+)
+
 ##### AUTOMATED #####
 
 set(GNG_COMPILE_OPTIONS "")
@@ -41,7 +48,6 @@ if(MSVC)
         /NOLOGO # Hide linker copyright notice
     )
     set(GNG_COMPILE_DEFINITIONS
-        __PLACEMENT_VEC_NEW_INLINE # Hack for placement new overides (will be removed)
         _WINDOWS
         WINVER=0x0A00              # Windows 10 is the minimum as we use DX12
         _WIN32_WINNT=0x0A00        # Windows 10 is the minimum as we use DX12
@@ -152,6 +158,10 @@ add_executable(RTS WIN32
     # Main/WinMain.h
     # etc.
 )
+
+set_target_properties(RTS PROPERTIES
+    ${GNG_GLOBAL_PROPERTIES}
+ )
 
 set_target_properties(RTS PROPERTIES
     # Put all .exe files in a folder called "Run"
