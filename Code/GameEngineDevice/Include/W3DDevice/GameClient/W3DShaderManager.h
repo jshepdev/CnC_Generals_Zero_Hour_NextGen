@@ -85,7 +85,7 @@ public:
 	///Return last activated shader.
 	static inline ShaderTypes getCurrentShader(void) {return m_currentShader;}
 	/// Loads a .vso file and creates a vertex shader for it
-	static HRESULT LoadAndCreateD3DShader(char* strFilePath, const D3DVERTEXELEMENT9* pDeclaration, DWORD Usage, Bool ShaderType, IDirect3DVertexShader9** pVertexShaderHandle, IDirect3DPixelShader9** pPixelShaderHandle);
+	static HRESULT LoadAndCreateD3DShader(const char* strFilePath, const D3DVERTEXELEMENT9* pDeclaration, DWORD Usage, Bool ShaderType, IDirect3DVertexShader9** pVertexShaderHandle, IDirect3DPixelShader9** pPixelShaderHandle);
 
 	static Bool testMinimumRequirements(ChipsetType *videoChipType, CpuType *cpuType, Int *cpuFreq, UnsignedInt *numRAM, Real *intBenchIndex, Real *floatBenchIndex, Real *memBenchIndex);
 	static StaticGameLODLevel getGPUPerformanceIndex(void);
@@ -99,8 +99,8 @@ public:
 	// Support routines for filter methods.
 	static Bool canRenderToTexture(void) { return (m_oldRenderSurface && m_newRenderSurface);}
 	static void startRenderToTexture(void); ///< Sets render target to texture.
-	static IDirect3DTexture8 * endRenderToTexture(void); ///< Ends render to texture, & returns texture.
-	static IDirect3DTexture8 * getRenderTexture(void);	///< returns last used render target texture
+	static wwDeviceTexture * endRenderToTexture(void); ///< Ends render to texture, & returns texture.
+	static wwDeviceTexture * getRenderTexture(void);	///< returns last used render target texture
 	static void drawViewport(Int color);	///<draws 2 triangles covering the current tactical viewport
 
 
@@ -114,7 +114,7 @@ protected:
 	// Info for a render to texture surface for special effects.
 	static Bool m_renderingToTexture;
 	static IDirect3DSurface8 *m_oldRenderSurface;	///<previous render target
-	static IDirect3DTexture8 *m_renderTexture;		///<texture into which rendering will be redirected.
+	static wwDeviceTexture *m_renderTexture;		///<texture into which rendering will be redirected.
 	static IDirect3DSurface8 *m_newRenderSurface;	///<new render target inside m_renderTexture
 	static IDirect3DSurface8 *m_oldDepthSurface;	///<previous depth buffer surface
 

@@ -82,6 +82,7 @@
 #include "win32device/GameClient/Win32Mouse.h"
 #include "Win32Device/Common/Win32LocalFileSystem.h"
 #include "Win32Device/Common/Win32BIGFileSystem.h"
+#include <afxvisualmanageroffice2007.h>
 
 #ifdef _INTERNAL
 // for occasional debugging...
@@ -103,7 +104,7 @@ void initSubsystem(SUBSYSTEM*& sysref, SUBSYSTEM* sys, const char* path1 = NULL,
 #define OPEN_FILE_DIR "OpenDirectory"
 
 Win32Mouse *TheWin32Mouse = NULL;
-char *gAppPrefix = "wb_"; /// So WB can have a different debug log file name.
+const char *gAppPrefix = "wb_"; /// So WB can have a different debug log file name.
 const Char *g_strFile = "data\\Generals.str";
 const Char *g_csfFile = "data\\%s\\Generals.csf";
 
@@ -274,6 +275,18 @@ CWorldBuilderApp::~CWorldBuilderApp()
 
 BOOL CWorldBuilderApp::InitInstance()
 {
+	// Initialize common controls for modern UI elements.
+	INITCOMMONCONTROLSEX icex;
+	icex.dwSize = sizeof(icex);
+	icex.dwICC = ICC_WIN95_CLASSES;  // You can add other control classes if needed.
+	InitCommonControlsEx(&icex);
+
+	// Enable control container support.
+	AfxEnableControlContainer();
+
+	// Set the default visual manager to enable modern MFC styling.
+	CMFCVisualManager::SetDefaultManager(RUNTIME_CLASS(CMFCVisualManagerOffice2007));
+
 	// initialization
   _set_se_translator( DumpExceptionInfo ); // Hook that allows stack trace.
 
@@ -463,6 +476,8 @@ BOOL CWorldBuilderApp::InitInstance()
 
 	CString openDir = this->GetProfileString(APP_SECTION, OPEN_FILE_DIR);
 	m_currentDirectory = openDir;
+
+	//m_pMainWnd->ShowWindow(SW_MAXIMIZE);
 
 	return TRUE;
 }

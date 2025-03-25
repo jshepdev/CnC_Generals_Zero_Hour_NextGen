@@ -39,7 +39,7 @@
 #define MIN_SLOT_SIZE	32	//minimum number of vertices allocated per slot (power of 2). See also MIN_SLOT_SIZE_SHIFT.
 #define	MIN_SLOT_SIZE_SHIFT	5 //used for division by MIN_SLOT_SIZE
 #define MAX_VERTEX_BUFFERS_CREATED	32	//maximum number of D3D vertex buffers allowed to create per vertex type.
-#define DEFAULT_VERTEX_BUFFER_SIZE	8192	//this size ends up generating VB's of about 256Kbytes
+#define DEFAULT_VERTEX_BUFFER_SIZE	8192	//this size ends up generating VB's of about 512Kbytes
 #define MAX_NUMBER_SLOTS	4096			//maximum number of slots that can be allocated.
 
 #define MAX_IB_SIZES 128 //number of different sized IB slots allowed (goes all the way up to 65536)
@@ -134,8 +134,8 @@ public:
 	void releaseSlot(W3DIndexBufferSlot *vbSlot);	///<return slot to pool
 	void freeAllSlots(void);	///<release all slots to pool.
 	void freeAllBuffers(void);	///<release all vertex buffers to pool.
-	void W3DBufferManager::ReleaseResources(void);	///<release D3D/W3D resources.
-	Bool W3DBufferManager::ReAcquireResources(void);	///<reaquire D3D/W3D resources.
+	void ReleaseResources(void);	///<release D3D/W3D resources.
+	Bool ReAcquireResources(void);	///<reaquire D3D/W3D resources.
 	///allows iterating over vertex buffers used by manager.  Input of NULL to get first.
 	W3DVertexBuffer *getNextVertexBuffer(W3DVertexBuffer *pVb, VBM_FVF_TYPES type)
 	{	if (pVb == NULL)

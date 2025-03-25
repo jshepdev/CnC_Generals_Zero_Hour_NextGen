@@ -279,7 +279,7 @@ public:
 	ModuleInfo() { }
 
 	void addModuleInfo(ThingTemplate *thingTemplate, const AsciiString& name, const AsciiString& moduleTag, const ModuleData* data, Int interfaceMask, Bool inheritable);
-	const ModuleInfo::Nugget *ModuleInfo::getNuggetWithTag( const AsciiString& tag ) const;
+	const ModuleInfo::Nugget *getNuggetWithTag( const AsciiString& tag ) const;
 
 	Int getCount() const 
 	{ 
@@ -432,7 +432,7 @@ public:
 	// This function is only for use by the AIUpdateModuleData::parseLocomotorSet function.
 	AIUpdateModuleData *friend_getAIModuleInfo(void);
 
-	ShadowType getShadowType() const { return (ShadowType)m_shadowType; }
+	ShadowType getShadowType() const;
 	Real getShadowSizeX() const { return m_shadowSizeX; }
 	Real getShadowSizeY() const { return m_shadowSizeY; }
 	Real getShadowOffsetX() const { return m_shadowOffsetX; }

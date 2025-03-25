@@ -92,7 +92,7 @@ enum
 struct LayoutScriptParse
 {
 
-	char *name;
+	const char *name;
 	Bool (*parse)( char *token, char *buffer, UnsignedInt version, WindowLayoutInfo *info );
 
 };
@@ -103,7 +103,7 @@ struct LayoutScriptParse
 struct GameWindowParse
 {
 
-	char *name;
+	const char *name;
 	Bool (*parse)( char *token, WinInstanceData *, char *, void * );
 
 };
@@ -135,7 +135,7 @@ static GameFont  *defFont				= NULL;
 // These strings must be in the same order as they are in their definitions 
 // (see WIN_STATUS_* enums and GWS_* enums).
 //
-const char *WindowStatusNames[] = { "ACTIVE", "TOGGLE", "DRAGABLE", "ENABLED", "HIDDEN", 
+const const char *WindowStatusNames[] = { "ACTIVE", "TOGGLE", "DRAGABLE", "ENABLED", "HIDDEN",
 														  "ABOVE", "BELOW", "IMAGE", "TABSTOP", "NOINPUT",
 														  "NOFOCUS", "DESTROYED", "BORDER",
 														  "SMOOTH_TEXT", "ONE_LINE", "NO_FLUSH", "SEE_THRU", 
@@ -143,7 +143,7 @@ const char *WindowStatusNames[] = { "ACTIVE", "TOGGLE", "DRAGABLE", "ENABLED", "
 															"USE_OVERLAY_STATES", "NOT_READY", "FLASHING", "ALWAYS_COLOR",
 															NULL };
 
-const char *WindowStyleNames[] = { "PUSHBUTTON",	"RADIOBUTTON",	"CHECKBOX",
+const const char *WindowStyleNames[] = { "PUSHBUTTON",	"RADIOBUTTON",	"CHECKBOX",
 														 "VERTSLIDER",	"HORZSLIDER",		"SCROLLLISTBOX",
 														 "ENTRYFIELD",	"STATICTEXT",		"PROGRESSBAR",
 														 "USER",				"MOUSETRACK",		"ANIMATED",
@@ -156,7 +156,7 @@ static GameWindow *windowStack[ WIN_STACK_DEPTH ];
 static GameWindow **stackPtr;
 
 // for parsing
-static char *seps = " =;\n\r\t";
+static const char *seps = " =;\n\r\t";
 WinDrawData enabledDropDownButtonDrawData[ MAX_DRAW_DATA ];  ///< for combo boxes
 WinDrawData disabledDropDownButtonDrawData[ MAX_DRAW_DATA ];  ///< for combo boxes
 WinDrawData hiliteDropDownButtonDrawData[ MAX_DRAW_DATA ];  ///< for combo boxes
@@ -491,68 +491,94 @@ static Bool parseTooltip( char *token, WinInstanceData *instData,
 	* and adjust to make the screen rect coords relative to any parent
 	* if present */
 //=============================================================================
-static Bool parseScreenRect(char* token, char* buffer,
-	Int* x, Int* y, Int* width, Int* height)
+static Bool parseScreenRect(char* token,char* buffer,Int* x,Int* y,Int* width,Int* height)
 {
 	GameWindow* parent = peekWindow();
-	IRegion2D screenRegion;
-	ICoord2D createRes;  // creation resolution
-	char* seps = " ,:=\n\r\t";
+
+	IRegion2D screenRegion;  // The unscaled 2D region from your data
+	ICoord2D  createRes;     // The “creation resolution” of the 4:3 UI
+	const char* seps = " ,:=\n\r\t";
 	char* c;
 
-	// Parse tokens for screenRegion and creation resolution
-	c = strtok(NULL, seps);  // UPPERLEFT token (ignored)
-	c = strtok(NULL, seps);  // x position
+	// Skip token for UPPERLEFT
+	c = strtok(NULL, seps);
+	// x position
+	c = strtok(NULL, seps);
 	scanInt(c, screenRegion.lo.x);
-	c = strtok(NULL, seps);  // y position
+	// y position
+	c = strtok(NULL, seps);
 	scanInt(c, screenRegion.lo.y);
 
-	c = strtok(NULL, seps);  // BOTTOMRIGHT token (ignored)
-	c = strtok(NULL, seps);  // x position
+	// Skip token for BOTTOMRIGHT
+	c = strtok(NULL, seps);
+	// x position
+	c = strtok(NULL, seps);
 	scanInt(c, screenRegion.hi.x);
-	c = strtok(NULL, seps);  // y position
+	// y position
+	c = strtok(NULL, seps);
 	scanInt(c, screenRegion.hi.y);
 
-	c = strtok(NULL, seps);  // CREATIONRESOLUTION token (ignored)
-	c = strtok(NULL, seps);  // x creation resolution
+	// Skip token for CREATIONRESOLUTION
+	c = strtok(NULL, seps);
+	// creation resolution X
+	c = strtok(NULL, seps);
 	scanInt(c, createRes.x);
-	c = strtok(NULL, seps);  // y creation resolution
+	// creation resolution Y
+	c = strtok(NULL, seps);
 	scanInt(c, createRes.y);
 
-	// Compute scale factors for x and y based on the creation resolution.
+	// Example: If creationRes = 800×600 (which is 4:3),
+	// and your window is 1920×1080 (16:9),
+	//    xScale = 1920 / 800   = 2.40
+	//    yScale = 1080 / 600   = 1.80
 	Real xScale = (Real)TheDisplay->getWidth() / (Real)createRes.x;
 	Real yScale = (Real)TheDisplay->getHeight() / (Real)createRes.y;
 
-	// Use the smaller scale factor to maintain the UI's aspect ratio.
+	// Use the smaller one to preserve aspect ratio
 	Real scale = (xScale < yScale) ? xScale : yScale;
 
-	// Compute offsets to center the UI within the display.
-	Real offsetX = ((Real)TheDisplay->getWidth() - (createRes.x * scale)) / 2.0f;
-	Real offsetY = ((Real)TheDisplay->getHeight() - (createRes.y * scale)) / 2.0f;
+	// After we scale the entire 4:3 “creation” width/height by ‘scale’,
+	// there will be extra space (either on the left/right or top/bottom).
+	// So we add half that leftover space as an offset to center it.
+	Real scaledUIWidth = (Real)createRes.x * scale;
+	Real scaledUIHeight = (Real)createRes.y * scale;
 
-	// Scale the screen region uniformly using the chosen scale factor.
-	screenRegion.lo.x = (Int)((Real)screenRegion.lo.x * scale);
-	screenRegion.lo.y = (Int)((Real)screenRegion.lo.y * scale);
-	screenRegion.hi.x = (Int)((Real)screenRegion.hi.x * scale);
-	screenRegion.hi.y = (Int)((Real)screenRegion.hi.y * scale);
+	Real offsetX = ((Real)TheDisplay->getWidth() - scaledUIWidth) * 0.5f;
+	Real offsetY = ((Real)TheDisplay->getHeight() - scaledUIHeight) * 0.5f;
 
-	// Adjust positions relative to the parent's screen position if one exists.
+	// Here we uniformly scale the region (lo..hi) by the same ‘scale’.
+	// That ensures no stretching.
+	Int scaledLoX = (Int)((Real)screenRegion.lo.x * scale);
+	Int scaledLoY = (Int)((Real)screenRegion.lo.y * scale);
+	Int scaledHiX = (Int)((Real)screenRegion.hi.x * scale);
+	Int scaledHiY = (Int)((Real)screenRegion.hi.y * scale);
+
+	// The final width/height of the UI
+	Int finalWidth = scaledHiX - scaledLoX;
+	Int finalHeight = scaledHiY - scaledLoY;
+
+	// Now place it in the correct spot.  If there’s a parent window,
+	// we usually want to add the parent's global position or, if
+	// the system expects us to subtract, we do so consistently.
+	// Make sure you know which coordinate system each part is in!
+	Int parentX = 0;
+	Int parentY = 0;
 	if (parent)
 	{
 		ICoord2D parentScreenPos;
 		parent->winGetScreenPosition(&parentScreenPos.x, &parentScreenPos.y);
-		*x = screenRegion.lo.x - parentScreenPos.x + (Int)offsetX;
-		*y = screenRegion.lo.y - parentScreenPos.y + (Int)offsetY;
-	}
-	else
-	{
-		*x = screenRegion.lo.x + (Int)offsetX;
-		*y = screenRegion.lo.y + (Int)offsetY;
+
+		parentX = parentScreenPos.x;
+		parentY = parentScreenPos.y;
 	}
 
-	// Set width and height from the scaled screen region.
-	*width = screenRegion.hi.x - screenRegion.lo.x;
-	*height = screenRegion.hi.y - screenRegion.lo.y;
+	// Because scaledLoX, scaledLoY are now “scaled offsets”
+	// in screen space, we typically do:
+	*x = scaledLoX - parentX + (Int)offsetX;
+	*y = scaledLoY - parentY + (Int)offsetY;
+
+	*width = finalWidth;
+	*height = finalHeight;
 
 	return TRUE;
 }
@@ -583,8 +609,8 @@ static Bool parseFont( char *token, WinInstanceData *instData,
 											 char *buffer, void *data )
 {
 	char *c, *ptr;
-	char *seps = " ,\n\r\t";
-	char *stringSeps = ":,\n\r\t\"";
+	const  char *seps = " ,\n\r\t";
+	const  char *stringSeps = ":,\n\r\t\"";
 	char fontName[ 256 ];
 	Int fontSize;
 	Int fontBold;
@@ -631,7 +657,7 @@ static Bool parseName( char *token, WinInstanceData *instData,
 {
 	char *c, *ptr;
 //	char *seps = " ,\n\r\t";
-	char *stringSeps = "\"";
+	const char *stringSeps = "\"";
 
 	// scan to the first " mark
 	ptr = buffer;
@@ -686,7 +712,7 @@ static Bool parseSystemCallback( char *token, WinInstanceData *instData,
 {
 	char *c, *ptr;
 //	char *seps = " ,\n\r\t";
-	char *stringSeps = "\"";
+	const char *stringSeps = "\"";
 
 	// scan to the first " mark
 	ptr = buffer;
@@ -713,7 +739,7 @@ static Bool parseInputCallback( char *token, WinInstanceData *instData,
 {
 	char *c, *ptr;
 //	char *seps = " ,\n\r\t";
-	char *stringSeps = "\"";
+	const char *stringSeps = "\"";
 
 	// scan to the first " mark
 	ptr = buffer;
@@ -740,7 +766,7 @@ static Bool parseTooltipCallback( char *token, WinInstanceData *instData,
 {
 	char *c, *ptr;
 //	char *seps = " ,\n\r\t";
-	char *stringSeps = "\"";
+	const char *stringSeps = "\"";
 
 	// scan to the first " mark
 	ptr = buffer;
@@ -767,7 +793,7 @@ static Bool parseDrawCallback( char *token, WinInstanceData *instData,
 {
 	char *c, *ptr;
 //	char *seps = " ,\n\r\t";
-	char *stringSeps = "\"";
+	const char *stringSeps = "\"";
 
 	// scan to the first " mark
 	ptr = buffer;
@@ -794,7 +820,7 @@ static Bool parseHeaderTemplate( char *token, WinInstanceData *instData,
 {
 	char *c, *ptr;
 //	char *seps = " ,\n\r\t";
-	char *stringSeps = "\"";
+	const char *stringSeps = "\"";
 
 	// scan to the first " mark
 	ptr = buffer;
@@ -820,7 +846,7 @@ static Bool parseListboxData( char *token, WinInstanceData *instData,
 {
 	ListboxData *listData = (ListboxData *)data;
 	char *c;
-	char *seps = " :,\n\r\t";
+	const char *seps = " :,\n\r\t";
 
 	// "LENGTH"
 	c = strtok( buffer, seps );  // label
@@ -896,7 +922,7 @@ static Bool parseComboBoxData( char *token, WinInstanceData *instData,
 {
 	ComboBoxData *comboData = (ComboBoxData *)data;
 	char *c;
-	char *seps = " :,\n\r\t";
+	const char *seps = " :,\n\r\t";
 
 	c = strtok( buffer, seps );  // label
 	c = strtok( NULL, seps );	// value
@@ -930,7 +956,7 @@ static Bool parseSliderData( char *token, WinInstanceData *instData,
 {
 	SliderData *sliderData = (SliderData *)data;
 	char *c;
-	char *seps = " :,\n\r\t";
+	const char *seps = " :,\n\r\t";
 
 	// "MINVALUE"
 	c = strtok( buffer, seps );  // label
@@ -954,7 +980,7 @@ static Bool parseRadioButtonData( char *token, WinInstanceData *instData,
 {
 	RadioButtonData *radioData = (RadioButtonData *)data;
 	char *c;
-	char *seps = " :,\n\r\t";
+	const char *seps = " :,\n\r\t";
 
 	// "GROUP"
 	c = strtok( buffer, seps );  // label
@@ -974,7 +1000,7 @@ static Bool parseTooltipText( char *token, WinInstanceData *instData,
 {
 	char *ptr = buffer;
 	char *c;
-	char *stringSeps = "\n\r\t\""; 
+	const char *stringSeps = "\n\r\t\"";
 
 	// scan to the first " mark
 	while( *ptr != '"' )
@@ -1007,7 +1033,7 @@ static Bool parseTooltipDelay( char *token, WinInstanceData *instData,
 {
 	//RadioButtonData *radioData = (RadioButtonData *)data;
 	char *c;
-	char *seps = " :,\n\r\t";
+	const char *seps = " :,\n\r\t";
 
 	// "getvalue"
 	c = strtok( buffer, seps );  // value
@@ -1026,7 +1052,7 @@ static Bool parseText( char *token, WinInstanceData *instData,
 {
 	char *ptr = buffer;
 	char *c;
-	char *stringSeps = "\n\r\t\""; 
+	const char *stringSeps = "\n\r\t\"";
 
 	// scan to the first " mark
 	while( *ptr != '"' )
@@ -1056,7 +1082,7 @@ static Bool parseTextColor( char *token, WinInstanceData *instData,
 														char *buffer, void *data )
 {
 	char *c;
-	char *seps       = " :,\n\r\t";
+	const char *seps       = " :,\n\r\t";
 	UnsignedInt r, g, b, a;
 	Int i, states = 3;
 	TextDrawData *textData;
@@ -1123,7 +1149,7 @@ static Bool parseStaticTextData( char *token, WinInstanceData *instData,
 {
 	TextData *textData = (TextData *)data;
 	char *c;
-	char *seps       = " :,\n\r\t";
+	const char *seps       = " :,\n\r\t";
 
 	// "CENTERED"
 	c = strtok( buffer, seps );  // label
@@ -1142,7 +1168,7 @@ static Bool parseTextEntryData( char *token, WinInstanceData *instData,
 {
 	EntryData *entryData = (EntryData *)data;
 	char *c;
-	char *seps       = " :,\n\r\t";
+	const char *seps       = " :,\n\r\t";
 
 	// "MAXLEN"
 	c = strtok( buffer, seps );  // label
@@ -1181,7 +1207,7 @@ static Bool parseTabControlData( char *token, WinInstanceData *instData,
 {
 	TabControlData *tabControlData = (TabControlData *)data;
 	char *c;
-	char *seps       = " :,\n\r\t";
+	const char *seps       = " :,\n\r\t";
 
 	//TABORIENTATION
 	c = strtok( buffer, seps );  // label
@@ -1239,7 +1265,7 @@ static Bool parseDrawData( char *token, WinInstanceData *instData,
 	WinDrawData *drawData;
 	Bool first = TRUE;
 	char *c;
-	char *seps       = " :,\n\r\t";
+	const char *seps       = " :,\n\r\t";
 
 	for( i = 0; i < MAX_DRAW_DATA; i++ )
 	{
@@ -2239,7 +2265,7 @@ static Bool parseChildWindows( GameWindow *window,
 }  // end parseChildWindows
 
 // lookup table for parsing functions
-static GameWindowParse gameWindowFieldList[] = 
+static const GameWindowParse gameWindowFieldList[] =
 {
 	{ "NAME", parseName },
 	{ "STATUS", parseStatus },
@@ -2299,7 +2325,7 @@ static GameWindowParse gameWindowFieldList[] =
 //=============================================================================
 static GameWindow *parseWindow( File *inFile, char *buffer )
 {
-	GameWindowParse *parse;
+	const GameWindowParse *parse;
 	GameWindow *window = NULL;
 	GameWindow *parent = peekWindow();
 	WinInstanceData instData;
@@ -2499,7 +2525,7 @@ cleanupAndExit:
 Bool parseInit( char *token, char *buffer, UnsignedInt version, WindowLayoutInfo *info )
 {
 	char *c;
-	char *seps = " \n\r\t";
+	const char *seps = " \n\r\t";
 
 	// get string
 	c = strtok( buffer, seps );
@@ -2518,7 +2544,7 @@ Bool parseInit( char *token, char *buffer, UnsignedInt version, WindowLayoutInfo
 Bool parseUpdate( char *token, char *buffer, UnsignedInt version, WindowLayoutInfo *info )
 {
 	char *c;
-	char *seps = " \n\r\t";
+	const char *seps = " \n\r\t";
 
 	// get string
 	c = strtok( buffer, seps );
@@ -2537,7 +2563,7 @@ Bool parseUpdate( char *token, char *buffer, UnsignedInt version, WindowLayoutIn
 Bool parseShutdown( char *token, char *buffer, UnsignedInt version, WindowLayoutInfo *info )
 {
 	char *c;
-	char *seps = " \n\r\t";
+	const char *seps = " \n\r\t";
 
 	// get string
 	c = strtok( buffer, seps );

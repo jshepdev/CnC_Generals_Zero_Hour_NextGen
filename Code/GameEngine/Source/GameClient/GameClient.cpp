@@ -81,6 +81,9 @@
 #include "GameLogic/GhostObject.h"
 #include "GameLogic/Object.h"
 #include "GameLogic/ScriptEngine.h"		// For TheScriptEngine - jkmcd
+
+#include "../Console/Console.h"
+
 #ifdef _INTERNAL
 // for occasional debugging...
 //#pragma optimize("", off)
@@ -88,6 +91,11 @@
 #endif
 
 #define DRAWABLE_HASH_SIZE	8192
+
+void DrawStatUnitOverlay();
+void RestoreMouseClip();
+
+wwCVar com_showfps("com_showfps", "0", "Toggles FPS overlay", CVAR_BOOL);
 
 /// The GameClient singleton instance
 GameClient *TheGameClient = NULL;
@@ -489,7 +497,7 @@ void GameClient::update( void )
 {
 	USE_PERF_TIMER(GameClient_update)
 
-	ImGui_ImplDX9_NewFrame();
+	ImGui_ImplDX12_NewFrame();
 	ImGui_ImplWin32_NewFrame();
 	ImGui::NewFrame();		
 
@@ -585,13 +593,15 @@ void GameClient::update( void )
 	
 	if(TheGlobalData->m_playIntro || TheGlobalData->m_afterIntro)
 	{
+		ImGui::Render();
+
 		// redraw all views, update the GUI
 		{
 			TheDisplay->DRAW();
 		}
 		{
 			TheDisplay->UPDATE();
-		}
+		}		
 		return;
 	}
 
@@ -690,12 +700,13 @@ void GameClient::update( void )
 	// need to draw the first frame, then don't draw again until TheGlobalData->m_noDraw
 	if (TheGlobalData->m_noDraw > TheGameLogic->getFrame() && TheGameLogic->getFrame() > 0) 
 	{
+		ImGui::Render();
 		return;
 	}
 #endif
 
 	// update all particle systems
-	if( !freezeTime )
+	if( !freezeTime)
 	{
 		// update particle systems
 		TheParticleSystemManager->setLocalPlayerIndex(localPlayerIndex);
@@ -714,14 +725,23 @@ void GameClient::update( void )
 	}
 
 	{
-		extern Bool IsConsoleActive;
-		if (IsConsoleActive)
+		if (com_showfps.GetBool())
 		{
+			DrawStatUnitOverlay();
+		}
+
+		if (DevConsole.IsConsoleActive)
+		{
+			ClipCursor(NULL);
 			DevConsole.Draw(0.5f);
+		}
+		else if(AllowMouseClip())
+		{
+			RestoreMouseClip();
 		}
 	}
 
-	ImGui::EndFrame();
+	ImGui::Render();
 
 	{
 		USE_PERF_TIMER(GameClient_draw)
@@ -735,16 +755,6 @@ void GameClient::update( void )
 	{
 		// let display string factory handle its update
 		TheDisplayStringManager->update();
-	}
-
-	{
-		// update the shell
-		TheShell->UPDATE();
-	}
-
-	{
-		// update the in game UI 
-		TheInGameUI->UPDATE();
 	}
 }  // end update
 
@@ -1114,7 +1124,7 @@ void GameClient::preloadAssets( TimeOfDay timeOfDay )
 	DEBUG_LOG(("Preloading memory dwAvailVirtual  %d --> %d : %d\n",
 		before.dwAvailVirtual, after.dwAvailVirtual, before.dwAvailVirtual - after.dwAvailVirtual));
 
-	char *textureNames[] = {
+	const char *textureNames[] = {
 		"ptspruce01.tga",
 		"exrktflame.tga",
 		"cvlimo3_d2.tga",

@@ -547,80 +547,111 @@ void HTreeClass::Anim_Update(const Matrix3D & root,HAnimClass * motion,float fra
 								
 /*Customized version of the above which excludes interpolation and assumes HRawAnimClass
 For use by 'Generals' -MW*/
-void HTreeClass::Anim_Update(const Matrix3D & root,HRawAnimClass * motion,float frame)
+void HTreeClass::Anim_Update(const Matrix3D& root, HRawAnimClass* motion, float frame)
 {
-	PivotClass *pivot,*endpivot,*lastAnimPivot;
+	PivotClass* pivot, * endpivot, * lastAnimPivot;
 
 	Pivot[0].Transform = root;
 	Pivot[0].IsVisible = true;
 
-	int num_anim_pivots = motion->Get_Num_Pivots ();
+	int num_anim_pivots = motion->Get_Num_Pivots();
+	int num_frames = motion->Get_Num_Frames();
 
-	//Get integer frame
-	int iframe=WWMath::Float_To_Long(frame);
-	if (iframe >= motion->Get_Num_Frames()) 
-		iframe = 0;
+	// --- New interpolation logic ---
+	// Break the floating 'frame' into integer + fractional parts
+	int iframe0 = static_cast<int>(floor(frame));
+	float alpha = frame - float(iframe0);
+
+	// Wrap/clamp the indices properly
+	if (iframe0 < 0) iframe0 = 0;              // or do a modulo if negative frames are expected
+	if (iframe0 >= num_frames) iframe0 = 0;    // wrap around or clamp 
+	int iframe1 = iframe0 + 1;
+	if (iframe1 >= num_frames) iframe1 = 0;    // wrap around
 
 	Vector3 trans;
-	Quaternion q;
+	Quaternion q, q0, q1;
 	Matrix3D mtx;
 
-	struct NodeMotionStruct * nodeMotion = ((HRawAnimClass*)motion)->Get_Node_Motion_Array();
-	nodeMotion += 1;	//skip the root node
+	// Skip the root node for motion array
+	struct NodeMotionStruct* nodeMotion = motion->Get_Node_Motion_Array();
+	nodeMotion += 1; // skip root node
 
 	pivot = &Pivot[1];
-	endpivot=pivot+(NumPivots-1);
+	endpivot = pivot + (NumPivots - 1);
 	lastAnimPivot = &Pivot[num_anim_pivots];
 
-	for (int piv_idx=1; pivot < endpivot; pivot++,nodeMotion++) {
-
+	for (int piv_idx = 1; pivot < endpivot; ++pivot, ++nodeMotion)
+	{
 		// base pose
 		assert(pivot->Parent != NULL);
 		Matrix3D::Multiply(pivot->Parent->Transform, pivot->BaseTransform, &(pivot->Transform));
-			
-		// Don't update this pivot if the HTree doesn't have animation data for it...
+
+		// If we have animation data for this pivot, apply it
 		if (pivot < lastAnimPivot)
 		{
-			
-			// animation
-			trans.Set(0.0f,0.0f,0.0f);
-			Matrix3D *xform=&pivot->Transform;
+			Matrix3D* xform = &pivot->Transform;
 
-			if (nodeMotion->X != NULL)
-				nodeMotion->X->Get_Vector(iframe,&(trans[0]));
-			if (nodeMotion->Y != NULL)
-				nodeMotion->Y->Get_Vector(iframe,&(trans[1]));
-			if (nodeMotion->Z != NULL)
-				nodeMotion->Z->Get_Vector(iframe,&(trans[2]));
+			// Interpolate translation
+			trans.Set(0.0f, 0.0f, 0.0f);
+			if (nodeMotion->X)
+			{
+				float x0, x1;
+				nodeMotion->X->Get_Vector(iframe0, &x0);
+				nodeMotion->X->Get_Vector(iframe1, &x1);
+				trans[0] = Lerp(x0, x1, alpha);  // or x0 + (x1 - x0) * alpha
+			}
+			if (nodeMotion->Y)
+			{
+				float y0, y1;
+				nodeMotion->Y->Get_Vector(iframe0, &y0);
+				nodeMotion->Y->Get_Vector(iframe1, &y1);
+				trans[1] = Lerp(y0, y1, alpha);
+			}
+			if (nodeMotion->Z)
+			{
+				float z0, z1;
+				nodeMotion->Z->Get_Vector(iframe0, &z0);
+				nodeMotion->Z->Get_Vector(iframe1, &z1);
+				trans[2] = Lerp(z0, z1, alpha);
+			}
 
+			// Apply translation (honor ScaleFactor if needed)
 			if (ScaleFactor == 1.0f)
 				xform->Translate(trans);
 			else
-				xform->Translate(trans*ScaleFactor);
+				xform->Translate(trans * ScaleFactor);
 
-			if (nodeMotion->Q != NULL) 
-			{	nodeMotion->Q->Get_Vector_As_Quat(iframe, q);
+			// Interpolate rotation (SLERP)
+			if (nodeMotion->Q)
+			{
+				nodeMotion->Q->Get_Vector_As_Quat(iframe0, q0);
+				nodeMotion->Q->Get_Vector_As_Quat(iframe1, q1);
+
+				// Replace 'Slerp' with whatever quaternion interpolation you prefer/implement
+				Slerp(q, q0, q1, alpha);
 #ifdef ALLOW_TEMPORARIES
-				*xform = *xform * ::Build_Matrix3D(q,mtx);
+				* xform = *xform * ::Build_Matrix3D(q, mtx);
 #else
-				xform->postMul(::Build_Matrix3D(q,mtx));
+				xform->postMul(::Build_Matrix3D(q, mtx));
 #endif
 			}
 
-			// visibility
-			if (nodeMotion->Vis != NULL)
-				pivot->IsVisible=(nodeMotion->Vis->Get_Bit(iframe) == 1);
+			// Visibility
+			if (nodeMotion->Vis)
+				pivot->IsVisible = (nodeMotion->Vis->Get_Bit(iframe0) == 1);
 			else
-				pivot->IsVisible=1;
+				pivot->IsVisible = 1;
 		}
 
-		if (pivot->Is_Captured()) 
-		{ 
+		// If capturing, override transforms
+		if (pivot->Is_Captured())
+		{
 			pivot->Capture_Update();
 			pivot->IsVisible = true;
-		} 
+		}
 	}
-}								
+}
+
 
 
 /***********************************************************************************************
