@@ -105,6 +105,8 @@
 #include "GameNetwork/GameSpy/GameResultsThread.h"
 #include "GameNetwork/GameSpy/PeerDefs.h"
 #include "GameNetwork/GameSpy/PersistentStorageThread.h"
+#include "GameNetwork/NextGenMP/NGMP_interfaces.h"
+
 #include "Common/Player.h"
 #include "WW3D2/ww3d.h"
 
@@ -575,6 +577,8 @@ DECLARE_PERF_TIMER(GameEngine_update)
  * @todo Allow the client to run as fast as possible, but limit the execution
  * of TheNetwork and TheGameLogic to a fixed framerate.
  */
+
+static NGMP_OnlineServicesManager* g_pOnlineServicesMgr = nullptr;
 void GameEngine::update( void )
 { 
 	static int m_serverFrame = 0;
@@ -602,7 +606,10 @@ void GameEngine::update( void )
 
 		// Compute how many milliseconds have elapsed since last call
 		auto elapsedMsServer = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastTimeServer).count();
+
+#if !defined(NGMP_HACK_USE_COUPLED_FRAME_LOGIC)
 		auto elapsedMsClient = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastTimeClient).count();
+#endif
 		
 
 		{
@@ -612,7 +619,9 @@ void GameEngine::update( void )
 				TheRadar->UPDATE();
 				TheAudio->UPDATE();
 
+#if !defined(NGMP_HACK_USE_COUPLED_FRAME_LOGIC)
 				if (elapsedMsClient >= clientlimit)
+#endif
 				{
 					StartClientCpuFrameTimer();					
 
@@ -628,8 +637,11 @@ void GameEngine::update( void )
 
 					WW3D::Set_DeltaTime(clientDeltaTime);
 					lastTimeClient = now;
+
+#if !defined(NGMP_HACK_USE_COUPLED_FRAME_LOGIC)
 					TheGameClient->setFrame(m_clientFrame);
 					m_clientFrame++;
+#endif
 					TheW3DFrameLengthInMsec = clientlimit;
 					TheGameClient->UPDATE();
 
@@ -637,6 +649,13 @@ void GameEngine::update( void )
 
 					// update the shell
 					TheShell->UPDATE();
+
+					// NGMP
+					if (g_pOnlineServicesMgr == nullptr)
+					{
+						g_pOnlineServicesMgr = new NGMP_OnlineServicesManager();
+					}
+					NGMP_OnlineServicesManager::GetInstance()->Tick();
 
 					// update the in game UI 
 					TheInGameUI->UPDATE();
@@ -659,7 +678,9 @@ void GameEngine::update( void )
 			if ((TheNetwork == NULL && !TheGameLogic->isGamePaused())
 				|| (TheNetwork && TheNetwork->isFrameDataReady()))
 			{
+#if !defined(NGMP_HACK_USE_COUPLED_FRAME_LOGIC)
 				if (elapsedMsServer >= limit)
+#endif
 				{
 					StartServerCpuFrameTimer();
 					TheGameLogic->UPDATE();
@@ -667,12 +688,14 @@ void GameEngine::update( void )
 				}
 			}
 
+#if !defined(NGMP_HACK_USE_COUPLED_FRAME_LOGIC)
 			if (elapsedMsServer >= limit)
 			{
 				lastTimeServer = now;
 				m_serverFrame++;
 				TheGameLogic->setFrame(m_serverFrame);
 			}
+#endif
 
 			
 		}

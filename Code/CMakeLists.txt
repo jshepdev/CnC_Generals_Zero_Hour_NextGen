@@ -186,7 +186,8 @@ target_include_directories(RTS PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/GameRenderer"
     "${CMAKE_CURRENT_SOURCE_DIR}/Libraries/Bink/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/Libraries/DX90SDK/Include"
-    "${CMAKE_CURRENT_SOURCE_DIR}/Libraries/Include"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Libraries/EpicOnlineServices/Include"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Libraries/Steamworks/Include"    "${CMAKE_CURRENT_SOURCE_DIR}/Libraries/Include"
     "${CMAKE_CURRENT_SOURCE_DIR}/GameEngine/Include"
     "${CMAKE_CURRENT_SOURCE_DIR}/GameEngineDevice/Include"
     "${CMAKE_CURRENT_SOURCE_DIR}/Libraries/Source/WWVegas"
@@ -256,5 +257,7 @@ target_link_libraries(RTS PRIVATE
 target_link_directories(RTS PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/d3d9on12/bin/src/Release
     ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/DX90SDK/Lib/x64
+	${CMAKE_CURRENT_SOURCE_DIR}/Libraries/EpicOnlineServices/Lib/
+    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/Steamworks/Lib/
     ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/Pix/x64
 )

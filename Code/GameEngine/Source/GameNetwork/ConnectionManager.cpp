@@ -1162,11 +1162,14 @@ void ConnectionManager::update(Bool isInGame) {
 // 5. bust some cap
 //
 
+	// TODO_NGMP: This is no longer a valid check
+	/*
 	if ((m_localAddr == 0) || (m_localPort == 0)) {
 		// we don't have a local address or port yet, this is bad.
 		DEBUG_ASSERTCRASH((m_localAddr != 0) && (m_localPort != 0), ("ConnectionManager doesn't have a local address."));
 		return;
 	}
+	*/
 
 	m_transport->doRecv();
 
@@ -1441,7 +1444,7 @@ void ConnectionManager::initTransport() {
 		delete m_transport;
 		m_transport = NULL;
 	}
-	m_transport = new Transport;
+	m_transport = new UDPTransport;
 	m_transport->reset();
 	m_transport->init(m_localAddr, m_localPort);
 }

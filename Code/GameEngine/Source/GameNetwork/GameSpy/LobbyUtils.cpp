@@ -61,6 +61,7 @@
 #include "GameNetwork/GameSpy/GSConfig.h"
 
 #include "Common/STLTypedefs.h"
+#include "GameNetwork/NextGenMP/NGMP_interfaces.h"
 
 #ifdef _INTERNAL
 // for occasional debugging...
@@ -198,6 +199,9 @@ static void gameTooltip(GameWindow *window,
 													WinInstanceData *instData,
 													UnsignedInt mouse)
 {
+	// TODO_NGMP
+	return;
+
 	Int x, y, row, col;
 	x = LOLONGTOSHORT(mouse);
 	y = HILONGTOSHORT(mouse);
@@ -514,8 +518,181 @@ struct GameSortStruct
 	}
 };
 
-static Int insertGame( GameWindow *win, GameSpyStagingRoom *game, Bool showMap )
+static Int insertGame( GameWindow *win, NGMP_LobbyInfo& lobbyInfo, Bool showMap )
 {
+	// TODO_NGMP
+	//game->cleanUpSlotPointers();
+	Color gameColor = GameSpyColor[GSCOLOR_GAME];
+
+	// TODO_NGMP: Support full again
+	//if (game->getNumNonObserverPlayers() == game->getMaxPlayers() || game->getNumPlayers() == MAX_SLOTS)
+	{
+		//gameColor = GameSpyColor[GSCOLOR_GAME_FULL];
+	}
+
+	// TODO_NGMP: Support crc check again
+	//if (game->getExeCRC() != TheGlobalData->m_exeCRC || game->getIniCRC() != TheGlobalData->m_iniCRC)
+	{
+		//gameColor = GameSpyColor[GSCOLOR_GAME_CRCMISMATCH];
+	}
+	UnicodeString gameName;
+	gameName.format(L"%hs (%hs)", lobbyInfo.strLobbyName.str(), lobbyInfo.strLobbyOwnerName.str());
+
+	int numPlayers = lobbyInfo.numMembers;
+	int maxPlayers = lobbyInfo.maxMembers;
+
+	AsciiString lobbyMapName = lobbyInfo.strMapDisplayName;
+	AsciiString ladder = AsciiString("TODO_NGMP");
+	USHORT ladderPort = 1;
+	int gameID = 0;
+	
+	bool bHasPassword = false;
+	bool bAllowSpectators = true;
+	int latency = 5;
+
+	// TODO_NGMP: Asian text
+	/*
+	if (TheGameSpyInfo->getDisallowAsianText())
+	{
+		const WideChar* buff = gameName.str();
+		Int length = gameName.getLength();
+		for (Int i = 0; i < length; ++i)
+		{
+			if (buff[i] >= 256)
+				return -1;
+		}
+	}
+	else if (TheGameSpyInfo->getDisallowNonAsianText())
+	{
+		const WideChar* buff = gameName.str();
+		Int length = gameName.getLength();
+		Bool hasUnicode = FALSE;
+		for (Int i = 0; i < length; ++i)
+		{
+			if (buff[i] >= 256)
+			{
+				hasUnicode = TRUE;
+				break;
+			}
+		}
+		if (!hasUnicode)
+			return -1;
+	}
+	*/
+
+
+	Int index = GadgetListBoxAddEntryText(win, gameName, gameColor, -1, COLUMN_NAME);
+	GadgetListBoxSetItemData(win, (void*)gameID, index);
+
+	UnicodeString s;
+
+	if (showMap)
+	{
+		UnicodeString mapName;
+		const MapMetaData* md = TheMapCache->findMap(lobbyMapName);
+		if (md)
+		{
+			mapName = md->m_displayName;
+		}
+		else
+		{
+			const char* start = lobbyMapName.reverseFind('\\');
+			if (start)
+			{
+				++start;
+			}
+			else
+			{
+				start = lobbyMapName.str();
+			}
+			mapName.translate(start);
+		}
+		GadgetListBoxAddEntryText(win, mapName, gameColor, index, COLUMN_MAP);
+
+		// TODO_NGMP: Support ladder again
+		if (TheLadderList != nullptr)
+		{
+			const LadderInfo* li = TheLadderList->findLadder(ladder, ladderPort);
+			if (li)
+			{
+				GadgetListBoxAddEntryText(win, li->name, gameColor, index, COLUMN_LADDER);
+			}
+			else if (ladderPort)
+			{
+				GadgetListBoxAddEntryText(win, TheGameText->fetch("GUI:UnknownLadder"), gameColor, index, COLUMN_LADDER);
+			}
+			else
+			{
+				GadgetListBoxAddEntryText(win, TheGameText->fetch("GUI:NoLadder"), gameColor, index, COLUMN_LADDER);
+			}
+		}
+		else
+		{
+			GadgetListBoxAddEntryText(win, TheGameText->fetch("GUI:NoLadder"), gameColor, index, COLUMN_LADDER);
+		}
+	}
+	else
+	{
+		GadgetListBoxAddEntryText(win, UnicodeString(L" "), gameColor, index, COLUMN_MAP);
+		GadgetListBoxAddEntryText(win, UnicodeString(L" "), gameColor, index, COLUMN_LADDER);
+	}
+
+	s.format(L"%d/%d", numPlayers, maxPlayers);
+	GadgetListBoxAddEntryText(win, s, gameColor, index, COLUMN_NUMPLAYERS);
+
+	if (bHasPassword)
+	{
+		const Image* img = TheMappedImageCollection->findImageByName("Password");
+		Int width = 10, height = 10;
+		if (img)
+		{
+			width = img->getImageWidth();
+			height = img->getImageHeight();
+		}
+		GadgetListBoxAddEntryImage(win, img, index, COLUMN_PASSWORD, width, height);
+	}
+	else
+	{
+		GadgetListBoxAddEntryText(win, UnicodeString(L" "), gameColor, index, COLUMN_PASSWORD);
+	}
+
+	if (bAllowSpectators)
+	{
+		const Image* img = TheMappedImageCollection->findImageByName("Observer");
+		GadgetListBoxAddEntryImage(win, img, index, COLUMN_OBSERVER);
+	}
+	else
+	{
+		GadgetListBoxAddEntryText(win, UnicodeString(L" "), gameColor, index, COLUMN_OBSERVER);
+	}
+
+	s.format(L"%d", latency);
+	GadgetListBoxAddEntryText(win, s, gameColor, index, COLUMN_PING);
+	Int ping = latency;
+	Int width = 10, height = 10;
+	if (pingImages[0])
+	{
+		width = pingImages[0]->getImageWidth();
+		height = pingImages[0]->getImageHeight();
+	}
+	// CLH picking an arbitrary number for our ping display
+	// TODO_NGMP: Better values for this
+	if (ping < 30)
+	{
+		GadgetListBoxAddEntryImage(win, pingImages[0], index, COLUMN_PING, width, height);
+	}
+	else if (ping < 70)
+	{
+		GadgetListBoxAddEntryImage(win, pingImages[1], index, COLUMN_PING, width, height);
+	}
+	else
+	{
+		GadgetListBoxAddEntryImage(win, pingImages[2], index, COLUMN_PING, width, height);
+	}
+
+	return index;
+
+	/*
 	game->cleanUpSlotPointers();
 	Color gameColor = GameSpyColor[GSCOLOR_GAME];
 	if (game->getNumNonObserverPlayers() == game->getMaxPlayers() || game->getNumPlayers() == MAX_SLOTS)
@@ -658,12 +835,87 @@ static Int insertGame( GameWindow *win, GameSpyStagingRoom *game, Bool showMap )
 	}
 
 	return index;
+	*/
+
 }
 
 void RefreshGameListBox( GameWindow *win, Bool showMap )
 {
 	if (!win)
 		return;
+
+	GadgetListBoxReset(win);
+
+	// save off selection
+	Int selectedIndex = -1;
+	
+	Int selectedID = 0;
+	GadgetListBoxGetSelected(win, &selectedIndex);
+	if (selectedIndex != -1)
+	{
+		selectedID = (Int)GadgetListBoxGetItemData(win, selectedIndex);
+	}
+	int prevPos = GadgetListBoxGetTopVisibleEntry(win);
+
+	NGMP_OnlineServicesManager::GetInstance()->GetLobbyInterface()->SearchForLobbies(
+		[=]()
+		{
+			win->winEnable(false);
+			GadgetListBoxAddEntryText(win, UnicodeString(L"Searching for public lobbies..."), GameMakeColor(255, 194, 15, 255), -1, -1);
+		},
+		[=](std::vector<NGMP_LobbyInfo> vecLobbies)
+		{
+			size_t numResults = vecLobbies.size();
+
+			GadgetListBoxReset(win);
+			if (numResults == 0)
+			{
+				win->winEnable(false);
+				GadgetListBoxAddEntryText(win, UnicodeString(L"No lobbies were found"), GameMakeColor(255, 194, 15, 255), -1, -1);
+			}
+			else
+			{
+				win->winEnable(true);
+
+				Int indexToSelect = -1;
+
+				int i = 0;
+				for (NGMP_LobbyInfo lobby : vecLobbies)
+				{
+					Int index = insertGame(win, lobby, showMap);
+					if (i == selectedID)
+					{
+						indexToSelect = index;
+					}
+
+					++i;
+				}
+
+				// restore selection
+				GadgetListBoxSetSelected(win, indexToSelect); // even for -1, so we can disable the 'Join Game' button
+				//	if(prevPos > 10)
+				GadgetListBoxSetTopVisibleEntry(win, prevPos);//+ 1
+
+				if (indexToSelect < 0 && selectedID)
+				{
+					TheWindowManager->winSetLoneWindow(NULL);
+				}
+			}
+		});
+
+	// TODO_NGMP
+	// populate listbox
+// 	for (int i = 0; i < 10; ++i)
+// 	{
+// 		Int index = insertGame(win, nullptr, showMap);
+// 		if (i == selectedID)
+// 		{
+// 			indexToSelect = index;
+// 		}
+// 	}
+
+	
+
 #if 0 // jmarshall - gamespy
 	// save off selection
 	Int selectedIndex = -1;

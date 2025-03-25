@@ -121,6 +121,9 @@ FILE *g_UT_commaLog=NULL;
 #include "../../gameenginedevice/include/W3DDevice/GameClient/Module/W3DModelDraw.h"
 #endif
 
+#include "GameNetwork/NextGenMP/ngmp_include.h"
+#include "GameNetwork/NextGenMP/ngmp_interfaces.h"
+
 
 #ifdef _INTERNAL
 // for occasional debugging...
@@ -1053,7 +1056,8 @@ void GameLogic::startNewGame( Bool saveGame )
 		else
 		{
 			DEBUG_LOG(("Starting gamespy game\n"));
-			TheGameInfo = game = TheGameSpyGame;	/// @todo: MDC add back in after demo
+			NGMPGame* NextGenMPGame = NGMP_OnlineServicesManager::GetInstance()->GetLobbyInterface()->GetCurrentGame();
+			TheGameInfo = game = NextGenMPGame;	/// @todo: MDC add back in after demo
 		}
 	}
 	else
@@ -3089,9 +3093,11 @@ void GameLogic::update( void )
 	}
 
 	// send the current time to the GameClient
-	//DEBUG_ASSERTCRASH(TheGameLogic == this, ("hmm, TheGameLogic is not right"));
-	//UnsignedInt now = TheGameLogic->getFrame();
-	//TheGameClient->setFrame(now);
+#if defined(NGMP_HACK_USE_COUPLED_FRAME_LOGIC)
+	DEBUG_ASSERTCRASH(TheGameLogic == this, ("hmm, TheGameLogic is not right"));
+	UnsignedInt now = TheGameLogic->getFrame();
+	TheGameClient->setFrame(now);
+#endif
 
 	// update (execute) scripts
 	{
@@ -3158,7 +3164,9 @@ void GameLogic::update( void )
 		TheStatsCollector->update();
 	}
 
+#if !defined(NGMP_HACK_USE_COUPLED_FRAME_LOGIC)
 	UnsignedInt now = TheGameLogic->getFrame();
+#endif
 
 	// Update the Recorder
 	{
@@ -3295,7 +3303,9 @@ void GameLogic::update( void )
 	// increment world time
 	if (!m_startNewGame)
 	{
-		//m_frame++;
+#if defined(NGMP_HACK_USE_COUPLED_FRAME_LOGIC)
+		m_frame++;
+#endif
 	}
 }
 

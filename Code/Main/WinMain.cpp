@@ -749,7 +749,7 @@ static Bool initializeAppWindows( HINSTANCE hInstance, Int nCmdShow, Bool runWin
 	gInitializing = true;
 
   HWND hWnd = CreateWindow( TEXT("Game Window"),
-                            TEXT("Command and Conquer Generals Next-Gen"),
+                            IsDebuggerPresent()? TEXT("Command and Conquer Generals Next-Gen [DEBUGGER]") : TEXT("Command and Conquer Generals Next-Gen"),
                             windowStyle, 
 														(GetSystemMetrics( SM_CXSCREEN ) / 2) - (startWidth / 2), // original position X
 														(GetSystemMetrics( SM_CYSCREEN ) / 2) - (startHeight / 2),// original position Y
@@ -992,6 +992,7 @@ int __stdcall WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmd
 	//		AsciiString(VERSION_BUILDUSER), AsciiString(VERSION_BUILDLOC),
 	//		AsciiString(__TIME__), AsciiString(__DATE__));
 
+#if !defined(ALLOW_MULTIPLE_INSTANCES)
 #if !defined(_DEBUG) && !defined(_INTERNAL)
 		//Create a mutex with a unique name to Generals in order to determine if
 		//our app is already running.
@@ -1019,6 +1020,7 @@ int __stdcall WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmd
 			return 0;
 		}
 		DEBUG_LOG(("Create GeneralsMutex okay.\n"));
+#endif
 #endif
 
 #ifdef DO_COPY_PROTECTION

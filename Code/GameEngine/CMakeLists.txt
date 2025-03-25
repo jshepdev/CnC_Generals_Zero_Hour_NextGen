@@ -496,6 +496,19 @@ add_library(GameEngine STATIC
     Source/GameLogic/System/GameLogic.cpp
     Source/GameLogic/System/GameLogicDispatch.cpp
     Source/GameLogic/System/RankInfo.cpp
+    Source/GameNetwork/NextGenMP/NGMP_Helpers.cpp
+    Source/GameNetwork/NextGenMP/NGMPGame.cpp
+    Source/GameNetwork/NextGenMP/NetworkMesh.cpp
+    Source/GameNetwork/NextGenMP/OnlineServices_Init.cpp
+    Source/GameNetwork/NextGenMP/OnlineServices_Auth.cpp
+    Source/GameNetwork/NextGenMP/OnlineServices_LobbyInterface.cpp
+    Source/GameNetwork/NextGenMP/OnlineServices_RoomsInterface.cpp
+    Source/GameNetwork/NextGenMP/NextGenTransport.cpp
+    Source/GameNetwork/NextGenMP/NetworkBitstream.cpp
+    Source/GameNetwork/NextGenMP/Packets/NetworkPacket_NetRoom_Hello.cpp
+    Source/GameNetwork/NextGenMP/Packets/NetworkPacket_NetRoom_HelloAck.cpp
+    Source/GameNetwork/NextGenMP/Packets/NetworkPacket_NetRoom_ChatMessage.cpp
+    Source/GameNetwork/NextGenMP/Packets/NetworkPacket_Lobby_StartGamePacket.cpp
     Source/GameNetwork/Connection.cpp
     Source/GameNetwork/ConnectionManager.cpp
     Source/GameNetwork/DisconnectManager.cpp
@@ -537,11 +550,12 @@ add_library(GameEngine STATIC
     Source/GameNetwork/Network.cpp
     Source/GameNetwork/NetworkUtil.cpp
     Source/GameNetwork/Transport.cpp
+    Source/GameNetwork/UDPTransport.cpp
     Source/GameNetwork/udp.cpp
     Source/GameNetwork/User.cpp
     Source/GameNetwork/WOLBrowser/WebBrowser.cpp
     Source/Precompiled/PreRTS.cpp
- "Source/Console/CvarManager.h" "Source/Console/CvarManager.cpp")
+ "Source/Console/CvarManager.h")
 
  set_target_properties(GameEngine PROPERTIES
     ${GNG_GLOBAL_PROPERTIES}
@@ -555,9 +569,15 @@ target_include_directories(GameEngine PRIVATE
     ../Libraries/Source/WWVegas
     ../Libraries/Source/WWVegas/WWLib
     ../Libraries/DX90SDK/Include
+    ../Libraries/EpicOnlineServices/Include
+    ../Libraries/Steamworks/Include
     Include
+    ../Libraries/EpicOnlineServices/Include
+    ../Libraries/Steamworks/Include
     Include/Precompiled
     Source/Precompiled
+    ../Libraries/EpicOnlineServices/Include
+    ../Libraries/Steamworks/Include
 )
 
 target_link_libraries(GameEngine PRIVATE
